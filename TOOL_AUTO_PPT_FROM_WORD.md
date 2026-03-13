@@ -2,6 +2,7 @@
 
 ## 1) Mục tiêu sản phẩm
 - Tự động chuyển nội dung từ file Word có bố cục tương đối cố định (khoảng 80%) thành slide PowerPoint.
+- Mục tiêu cao nhất: output hành vi và khả năng chỉnh sửa **giống PowerPoint 100%** ở file cuối.
 - Vẫn giữ được năng lực xử lý “mạnh như PowerPoint”:
   - bố cục chuẩn,
   - định dạng phong phú,
@@ -11,7 +12,21 @@
   - chỉnh sửa thủ công hậu kỳ.
 - Hạn chế thao tác tay lặp đi lặp lại khi làm báo cáo định kỳ.
 
-## 2) Kiến trúc đề xuất (Hybrid: Rule-based + AI)
+## 2) Điều kiện để “giống PowerPoint 100%”
+
+Muốn đạt mức 100%, nguyên tắc kỹ thuật là: **để chính PowerPoint render và lưu file cuối** (native engine), thay vì chỉ sinh OpenXML bằng thư viện bên thứ ba.
+
+- Khuyến nghị kiến trúc 2 lớp:
+  1. **Planning layer** (server): đọc Word, chuẩn hóa schema, lên kế hoạch bố cục/tài nguyên/animation.
+  2. **Native PowerPoint execution layer** (client Windows hoặc Office Add-in): mở template, apply toàn bộ lệnh lên object model của PowerPoint, rồi `SaveAs .pptx`.
+- Vì sao cần native engine:
+  - đảm bảo fidelity cho animation nâng cao, morph/transition, media timing, smart art/chart behavior, group/ungroup, theme effect.
+  - tránh sai khác hiển thị giữa các thư viện tạo file và ứng dụng PowerPoint thật.
+- Chính sách triển khai:
+  - **Gold path (100%)**: Office JS Add-in hoặc COM/VSTO automation.
+  - **Fallback path (không cam kết 100%)**: `python-pptx`/OpenXML khi môi trường không có PowerPoint.
+
+## 3) Kiến trúc đề xuất (Hybrid: Rule-based + AI)
 
 ### Luồng tổng quát
 1. **Ingest Word**
@@ -32,7 +47,7 @@
 6. **Human-in-the-loop**
    - UI cho phép “accept / regenerate / edit” trước khi xuất bản.
 
-## 3) Cách giữ “mạnh như PowerPoint” nhưng tự động hóa cao
+## 4) Cách giữ “mạnh như PowerPoint” nhưng tự động hóa cao
 
 ### A. Chuẩn hóa thiết kế bằng template hệ thống
 - Xây **Design System cho slide**:
@@ -62,7 +77,7 @@
 - Gắn `Notes` và `Tags` để truy vết nội dung đã sinh tự động.
 - Giữ naming convention cho shape để script có thể cập nhật lần sau (round-trip).
 
-## 4) Định nghĩa schema trung gian (gợi ý)
+## 5) Định nghĩa schema trung gian (gợi ý)
 ```json
 {
   "report_meta": {
@@ -88,7 +103,7 @@
 }
 ```
 
-## 5) Công nghệ triển khai thực tế
+## 6) Công nghệ triển khai thực tế
 
 ### Parser & NLP
 - `python-docx` hoặc `mammoth` để đọc Word.
@@ -96,10 +111,12 @@
 - Vietnamese NLP: tách ý, chuẩn hóa thuật ngữ domain.
 
 ### Tạo PowerPoint
-- `python-pptx` cho render cơ bản đến nâng cao.
-- Nếu cần tính năng sâu (animation phức tạp):
-  - dùng Office JS Add-in,
-  - hoặc COM automation (môi trường Windows).
+- Để đạt parity 100%: ưu tiên **Office JS Add-in** hoặc **COM/VSTO automation** để thao tác trực tiếp trên PowerPoint thật.
+- `python-pptx` dùng cho môi trường server/fallback, nhưng không nên là đường chính nếu yêu cầu “giống 100%” cho animation/transition nâng cao.
+- Cơ chế run-time đề xuất:
+  - server tạo “execution plan” (JSON),
+  - PowerPoint runner đọc plan và apply tuần tự trên object model,
+  - PowerPoint native `SaveAs` file đầu ra.
 
 ### Backend service
 - API kiểu:
@@ -115,7 +132,7 @@
   - nút Regenerate by style (ngắn hơn, formal hơn, data-first...).
 
 
-## 6) Gán ảnh theo chỉ định (place image / fill shape như PowerPoint)
+## 7) Gán ảnh theo chỉ định (place image / fill shape như PowerPoint)
 
 Để đáp ứng nhu cầu “tôi cung cấp ảnh + vị trí muốn gán”, nên thêm lớp **Asset Mapping Engine**:
 
@@ -164,7 +181,7 @@
 }
 ```
 
-## 7) Chỉ định animation theo từng phần tử trong slide
+## 8) Chỉ định animation theo từng phần tử trong slide
 
 Để animation “mạnh như PowerPoint”, nên tách thành **Animation Timeline Spec** độc lập với nội dung:
 
@@ -217,7 +234,7 @@
 }
 ```
 
-## 8) Chiến lược xử lý 80/20
+## 9) Chiến lược xử lý 80/20
 - **80% cố định**: pipeline deterministic để tốc độ nhanh và output nhất quán.
 - **20% linh hoạt**:
   - fallback nhiều mức:
@@ -229,20 +246,23 @@
   - thời gian chỉnh tay trung bình,
   - tỉ lệ lỗi tràn chữ/đè hình.
 
-## 9) Lộ trình MVP (4–6 tuần)
+## 10) Lộ trình MVP (4–6 tuần)
 1. Tuần 1: Chốt template + schema + quy ước Word input.
 2. Tuần 2: Parser Word + mapping rule cơ bản.
 3. Tuần 3: Render pptx + QA kiểm lỗi layout.
 4. Tuần 4: Thêm AI summarize/title rewrite + UI duyệt.
 5. Tuần 5-6: Pilot với dữ liệu thật, tối ưu rule, logging, metrics.
 
-## 10) Nguyên tắc để scale lâu dài
+## 11) Nguyên tắc để scale lâu dài
 - Template versioning (v1, v2...) và migration rule.
 - Prompt/version control cho AI step.
 - Telemetry chi tiết từng slide generation step.
 - Human feedback loop để “học” pattern chỉnh tay phổ biến.
+- Thiết lập **Parity Test Suite**: mở cùng file trên PowerPoint, export ảnh từng slide, so sánh pixel/layout/animation timeline với baseline.
+- Chỉ đánh dấu “100% mode” khi chạy qua native PowerPoint execution layer và pass parity suite.
 
-## 11) Trả lời ngắn cho câu hỏi của bạn
-Muốn vừa tự động hóa cao vừa mạnh như PowerPoint, bạn nên làm theo mô hình **Hybrid pipeline**:
-- **Word -> JSON schema -> Rule planner -> Asset mapping -> Animation timeline -> PPT renderer -> QA -> Human review**,
-- trong đó **template + rule** đảm bảo ổn định, còn **AI** chỉ xử lý ngoại lệ và tối ưu nội dung.
+## 12) Trả lời ngắn cho câu hỏi của bạn
+Nếu mục tiêu là **giống PowerPoint 100%**, bạn nên dùng kiến trúc:
+- **Word -> JSON schema -> Rule planner -> Asset mapping -> Animation timeline -> Native PowerPoint runner -> QA parity -> Human review**.
+- Điểm mấu chốt: file cuối phải do **PowerPoint native engine** render/lưu.
+- AI vẫn dùng để tối ưu nội dung, nhưng phần “vẽ và hiệu ứng” giao cho PowerPoint object model để đảm bảo độ giống tuyệt đối.
