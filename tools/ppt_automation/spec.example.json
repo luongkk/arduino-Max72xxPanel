@@ -1,0 +1,34 @@
+{
+  "asset_bindings": [
+    {
+      "slide_index": 1,
+      "source": "images/overview.jpg"
+    },
+    {
+      "slide_index": 2,
+      "source": "images/kpi.png"
+    }
+  ],
+  "animations": [
+    {
+      "slide_index": 2,
+      "timeline": [
+        {
+          "object_ref": "TITLE",
+          "effect": "fade",
+          "trigger": "with_previous",
+          "duration_ms": 400,
+          "order": 1
+        },
+        {
+          "object_ref": "BULLET_GROUP_1",
+          "effect": "wipe",
+          "direction": "from_left",
+          "trigger": "on_click",
+          "duration_ms": 300,
+          "order": 2
+        }
+      ]
+    }
+  ]
+}

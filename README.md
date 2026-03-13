@@ -38,3 +38,7 @@ At YouTube, you'll find a [ticker tape][tickertape] and [snake] demo.
 [spi]: http://arduino.cc/en/Reference/SPI "SPI library"
 [tickertape]: http://www.youtube.com/watch?v=a8T7ZFeaf1A "Max72xxPanel Arduino library demo (ticker tape)"
 [snake]: http://www.youtube.com/watch?v=FbJJyuCwohs "Max72xxPanel Arduino library demo (snake)"
+## Automation idea
+- See `TOOL_AUTO_PPT_FROM_WORD.md` for a practical architecture note on generating PowerPoint reports from Word with high automation, including image-to-shape/fill mapping, per-element animation control, and a native PowerPoint execution mode for 100% parity goals.
+- Starter CLI implementation is available at `tools/ppt_automation/` for Word→PPT generation with image bindings and animation specs.
+
